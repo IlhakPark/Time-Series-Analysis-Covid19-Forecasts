@@ -1,0 +1,342 @@
+---
+title: "The end of COVID-19 is coming"
+author: "Ilhak Park"
+date: "21/06/2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+supervisor: Bilgehan Erdem, Ph.D.
+---
+#### 0. Library
+```{r}
+library(rio)
+library(forecast)
+library(tseries)
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(zoo)
+```
+
+
+#### 1. Loading Data
+```{r}
+dataset <- read.csv(file= "owid-covid-data.csv", stringsAsFactors =FALSE, header=TRUE)
+```
+
+#### 2. Exploratoy Data Analysis of dataset
+```{r}
+dim(dataset)
+head(dataset)
+tail(dataset)
+summary(dataset)
+str(dataset)
+sapply(dataset, class)
+```
+
+#### 2a). EDA - Selecting Variables & Observations
+```{r}
+#The class of Date is character, but the class should be date.
+dataset$date <- as.Date(dataset$date)
+
+
+#Creating a subset with only four columns that we need.
+dataSubset <- data.frame("date" = dataset$date, "location" = dataset$location, "new_cases" = dataset$new_cases, "new_deaths" = dataset$new_deaths)
+dataSubset 
+
+#The period of the study is from March 1st, 2020 to June 1st, 2021.
+China<-dataSubset %>% filter (location =='China', date>= '2020-03-01',date<='2021-06-01')
+US<-dataSubset %>% filter (location =='United States', date>= '2020-03-01',date<='2021-06-01')
+India<-dataSubset %>% filter (location =='India', date>= '2020-03-01',date<='2021-06-01')
+UK<-dataSubset %>% filter (location =='United Kingdom', date>= '2020-03-01',date<='2021-06-01')
+Germany<-dataSubset %>% filter (location =='Germany', date>= '2020-03-01',date<='2021-06-01')
+Belgium<-dataSubset %>% filter (location =='Belgium', date>= '2020-03-01',date<='2021-06-01')
+Netherlands<-dataSubset %>% filter (location =='Netherlands', date>= '2020-03-01',date<='2021-06-01')
+```
+
+#### 2b). EDA - Missing Values & Combine EU countries
+```{r}
+#There are missing values, in the new deaths variable, before first death cases occur, so we are replacing NA to 0.
+India[is.na(India)] <-0
+UK[is.na(UK)] <-0
+Germany[is.na(Germany)] <-0
+Belgium[is.na(Belgium)] <-0
+Netherlands[is.na(Netherlands)] <-0
+
+#Combine Germany Belgium and Netherlands as EU
+EUCounts <- Germany[3:4] + Belgium[3:4] + Netherlands[3:4]
+EUDates <- Germany[1]
+EULocation<- matrix(rep('EU',458),458,1)
+colnames(EULocation) <-c('location')
+EU <- cbind(EUDates,EULocation,EUCounts)
+```
+
+#### 2c). EDA - Correlation between new cases and new deaths 
+```{r}
+cor(US$new_cases,US$new_deaths)
+cor(China$new_cases,China$new_deaths)
+cor(India$new_cases, India$new_deaths)
+cor(UK$new_cases, UK$new_deaths)
+cor(EU$new_cases, EU$new_deaths)
+#New cases and new deaths have a positive correlation in all countries. Since new cases reach zero, new deaths will also be zero. In this study we will focus on forecasting new cases only. 
+```
+
+#### 2d). EDA - Negative values (false postive cases)
+```{r}
+#Negative values are observed in new cases for China and UK. The negative values are false positives due to negative confirmatory PCR.
+summary(US)
+summary(China)
+summary(India)
+summary(UK)
+summary(EU)
+
+#China has a false positive case, so we will change the new case value on 2020-06-03 from -1 to 0, and reduce the new case value on 2020-06-02 from 1 to 0.
+China[95,3] <- 0
+China[94,3] <- 0
+summary(China)
+
+#UK has thousands of false positive cases, from the beginning, and updated the data by reducing 8,010 cases on April 4, 2021.
+#In order to have an accurate data, we will import the data released by UK government. (https://coronavirus.data.gov.uk/details/cases)
+UK_data <- read.csv(file= "UK_data.csv", stringsAsFactors =FALSE, header=TRUE)
+Subset_UK <- data.frame("date" = UK_data$date, "location" = UK_data$areaName, "new_cases" = UK_data$newCasesBySpecimenDate)
+Subset_UK <- Subset_UK[order(Subset_UK$date),]
+UK<-Subset_UK %>% filter (date>= '2020-03-01',date<='2021-06-01')
+summary(UK)
+```
+
+#### 2e). EDA - Decomposition check
+```{r}
+ts_US <- ts(US$new_cases, frequency = 7)
+ts_US
+decompose_US <- decompose(ts_US, "additive")
+plot(decompose_US)
+
+ts_China <- ts(China$new_cases, frequency = 7)
+decompose_China <- decompose(ts_China, "additive")
+plot(decompose_China)
+
+ts_India <- ts(India$new_cases, frequency = 7)
+decompose_India <- decompose(ts_India, "additive")
+plot(decompose_India)
+
+ts_UK <- ts(UK$new_cases, frequency = 7)
+decompose_UK <- decompose(ts_UK, "additive")
+plot(decompose_UK)
+
+ts_EU <- ts(EU$new_cases, frequency = 7)
+decompose_EU <- decompose(ts_EU, "additive")
+plot(decompose_EU)
+```
+#### 2f). EDA - Stationary check
+```{r}
+acf(ts_US)
+#ACF is decaying slowly and remains above the significance range (blue lines), which means it is non-stationary
+
+adf.test(as.matrix(ts_US))
+#Conducting Augmented Dickey-Fuller Test to check if the data is stationary
+#p-value is greater than 0.05, which means it is non-stationary again.
+
+acf(ts_China, lag.max = 34)
+adf.test(as.matrix(ts_China))
+#ts_China is stationary
+
+acf(ts_India, lag.max = 34)
+adf.test(as.matrix(ts_India))
+#ts_India seems non-stationary from its ACF, but passed the ADF test
+
+acf(ts_UK)
+adf.test(as.matrix(ts_UK))
+#ts_UK is non-stationary
+
+acf(ts_EU)
+adf.test(as.matrix(ts_EU))
+#ts_EU is non-stationary
+```
+
+#### 3a). Modelling - US
+```{r}
+#finding the best ARIMA model with respect to AIC value
+model_US <- auto.arima(ts_US, ic="aic", trace =TRUE, approximation = F)
+model_US
+#checking stationary after seasonal differencing
+acf(ts(model_US$residuals))
+pacf(ts(model_US$residuals))
+#ACF shows exponential decays and indicates it is stationary
+
+#forecasting 1 month ahead with a 95% interval
+forecast_US<-forecast(model_US, h=4, level=c(95))
+forecast_US
+plot(forecast_US)
+summary(forecast_US)
+accuracy(forecast_US)
+
+
+#actual new cases in US on July 1, 2021
+(dataset %>% filter (location =='United States', date=='2021-07-01'))[6]
+#14463
+#difference between the actual and predicted
+abs(14463 - 8893.088)
+
+```
+#### 3b). Modeling - China 
+```{r}
+#finding the best ARIMA model with respect to AIC value
+model_China <- auto.arima(ts_China, ic="aic", trace =TRUE, approximation = F)
+model_China
+#checking stationary after seasonal differencing
+acf(ts(model_China$residuals))
+pacf(ts(model_China$residuals))
+#ACF shows exponential decays and indicates it is stationary
+
+#forecasting 1 month ahead with a 95% interval
+forecast_China<-forecast(model_China, h=4, level=c(95))
+forecast_China
+plot(forecast_China)
+summary(forecast_China)
+accuracy(forecast_China)
+
+
+#actual new cases in China on July 1, 2021
+(dataset %>% filter (location =='China', date=='2021-07-01'))[6]
+#18
+#difference between the actual and predicted
+abs(18 - 29.76)
+```
+
+#### 3c). Modeling - India
+```{r}
+#finding the best ARIMA model with respect to AIC value
+model_India <- auto.arima(ts_India, ic="aic", trace =TRUE, approximation = FALSE)
+model_India
+#checking stationary after seasonal differencing
+acf(ts(model_India$residuals))
+pacf(ts(model_India$residuals))
+#ACF shows exponential decays and indicates it is stationary
+
+#forecasting 1 month ahead with a 95% interval
+forecast_India<-forecast(model_India, h=4, level=c(95))
+forecast_India
+plot(forecast_India)
+summary(forecast_India)
+accuracy(forecast_India)
+
+
+#actual new cases in India on July 1, 2021
+(dataset %>% filter (location =='India', date=='2021-07-01'))[6]
+#46617
+#difference between the actual and predicted
+abs(46617 -98886.52)
+```
+
+#### 3d). Modeling - UK
+```{r}
+#finding the best ARIMA model with respect to AIC value
+model_UK <- auto.arima(ts_UK, ic="aic", trace =TRUE, approximation = F)
+model_UK
+#checking stationary after seasonal differencing
+acf(ts(model_UK$residuals))
+pacf(ts(model_UK$residuals))
+#ACF shows exponential decays and indicates it is stationary
+
+#forecasting 1 month ahead with a 95% interval
+forecast_UK<-forecast(model_UK, h=4, level=c(95))
+forecast_UK
+plot(forecast_UK)
+summary(forecast_UK)
+accuracy(forecast_UK)
+
+#actual new cases in UK on July 1, 2021 is 28071
+#difference between the actual and predicted
+abs(28071 - 3944.238)
+```
+
+#### 3e). Modeling - EU
+```{r}
+#finding the best ARIMA model with respect to AIC value
+model_EU <- auto.arima(ts_EU, ic="aic", trace =TRUE, approximation = F)
+model_EU
+#checking stationary after seasonal differencing
+acf(ts(model_EU$residuals))
+pacf(ts(model_EU$residuals))
+#ACF shows exponential decays and indicates it is stationary
+
+#forecasting 1 month ahead with a 95% interval
+forecast_EU<-forecast(model_EU, h=4, level=c(95))
+forecast_EU
+plot(forecast_EU)
+summary(forecast_EU)
+accuracy(forecast_EU)
+
+
+#actual new cases in EU on July 1, 2021 is 2337
+(dataset %>% filter (location =='Belgium', date=='2021-07-01'))[6] +(dataset %>% filter (location =='Netherlands', date=='2021-07-01'))[6] +(dataset %>% filter (location =='Germany', date=='2021-07-01'))[6]
+#difference between the actual and predicted
+abs(2337 - 7650.1)
+```
+#### 3f). Modeling - US only 2021 data (extra)
+```{r}
+US2 <- US %>% filter (location =='United States', date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= US2, aes(date,new_cases)) + geom_line()
+
+ts_US2 <- ts(US2$new_cases,frequency =7)
+ts_US2
+decompose_US <- decompose(ts_US2, "additive")
+plot(decompose_US)
+acf(ts_US2)
+pacf(ts_US2)
+model_US2 <- auto.arima(ts_US2, ic="aic", trace =TRUE, approximation = F)
+model_US2
+acf(ts(model_US2$residuals))
+pacf(ts(model_US2$residuals))
+forecast_US2<-forecast(model_US2, h=4, level=c(95))
+forecast_US2
+plot(forecast_US2)
+summary(forecast_US2)
+accuracy(forecast_US2)
+#difference between the actual and predicted
+abs(14463 - 4236.653)
+```
+
+
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
+
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
+
+#### . 
+```{r}
+
+```
