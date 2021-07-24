@@ -105,8 +105,10 @@ UK<-Subset_UK %>% filter (date>= '2020-03-01',date<='2021-06-01')
 summary(UK)
 ```
 
+
 #### 2e). EDA - Decomposition check
 ```{r}
+#Media reports weekly COVID-19 trend, so frequency of 7 is used for all countries. 
 ts_US <- ts(US$new_cases, frequency = 7)
 ts_US
 decompose_US <- decompose(ts_US, "additive")
@@ -154,7 +156,7 @@ adf.test(as.matrix(ts_EU))
 #ts_EU is non-stationary
 ```
 
-#### 3a). Modelling - US
+#### 3a-1). Modelling - US (training set of 2020/03 - 2021/06)
 ```{r}
 #finding the best ARIMA model with respect to AIC value
 model_US <- auto.arima(ts_US, ic="aic", trace =TRUE, approximation = F)
@@ -164,7 +166,7 @@ acf(ts(model_US$residuals))
 pacf(ts(model_US$residuals))
 #ACF shows exponential decays and indicates it is stationary
 
-#forecasting 1 month ahead with a 95% interval
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
 forecast_US<-forecast(model_US, h=4, level=c(95))
 forecast_US
 plot(forecast_US)
@@ -177,9 +179,39 @@ accuracy(forecast_US)
 #14463
 #difference between the actual and predicted
 abs(14463 - 8893.088)
-
+#5569
 ```
-#### 3b). Modeling - China 
+
+#### 3a-2). Modeling - US (training set of 2021/01 - 2021/06)
+```{r}
+US_2021 <- US %>% filter (location =='United States', date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= US_2021, aes(date,new_cases)) + geom_line()
+
+#checking decomposition and stationary
+ts_US_2021 <- ts(US_2021$new_cases,frequency =7)
+ts_US_2021
+decompose_US_2021 <- decompose(ts_US_2021, "additive")
+plot(decompose_US_2021)
+acf(ts_US_2021)
+pacf(ts_US_2021)
+model_US_2021 <- auto.arima(ts_US_2021, ic="aic", trace =TRUE, approximation = F)
+model_US_2021
+acf(ts(model_US_2021$residuals))
+pacf(ts(model_US_2021$residuals))
+
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
+forecast_US_2021<-forecast(model_US_2021, h=4, level=c(95))
+forecast_US_2021
+plot(forecast_US_2021)
+summary(forecast_US_2021)
+accuracy(forecast_US_2021)
+
+#difference between the actual and predicted
+abs(14463 - 4236.653)
+#10226.35
+```
+
+#### 3b-1). Modeling - China (training set of 2020/03 - 2021/06)
 ```{r}
 #finding the best ARIMA model with respect to AIC value
 model_China <- auto.arima(ts_China, ic="aic", trace =TRUE, approximation = F)
@@ -204,7 +236,37 @@ accuracy(forecast_China)
 abs(18 - 29.76)
 ```
 
-#### 3c). Modeling - India
+#### 3b-2). Modeling - China (training set of 2021/01 - 2021/06)
+```{r}
+China_2021 <- China %>% filter ( date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= China_2021, aes(date,new_cases)) + geom_line()
+
+#checking decomposition and stationary
+ts_China_2021 <- ts(China_2021$new_cases,frequency =7)
+ts_China_2021
+decompose_China_2021 <- decompose(ts_China_2021, "additive")
+plot(decompose_China_2021)
+acf(ts_China_2021)
+pacf(ts_China_2021)
+model_China_2021 <- auto.arima(ts_China_2021, ic="aic", trace =TRUE, approximation = F)
+model_China_2021
+acf(ts(model_China_2021$residuals))
+pacf(ts(model_China_2021$residuals))
+
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
+forecast_China_2021<-forecast(model_China_2021, h=4, level=c(95))
+forecast_China_2021
+plot(forecast_China_2021)
+summary(forecast_China_2021)
+accuracy(forecast_China_2021)
+
+#actual new cases in China on July 1, 2021
+(dataset %>% filter (location =='China', date=='2021-07-01'))[6]
+#18
+abs(18 - 29.7)
+```
+
+#### 3c-1). Modeling - India (training set of 2020/03 - 2021/06)
 ```{r}
 #finding the best ARIMA model with respect to AIC value
 model_India <- auto.arima(ts_India, ic="aic", trace =TRUE, approximation = FALSE)
@@ -229,7 +291,38 @@ accuracy(forecast_India)
 abs(46617 -98886.52)
 ```
 
-#### 3d). Modeling - UK
+#### 3c-2). Modeling - India (training set of 2021/01 - 2021/06)
+```{r}
+India_2021 <- India %>% filter ( date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= India_2021, aes(date,new_cases)) + geom_line()
+
+#checking decomposition and stationary
+ts_India_2021 <- ts(India_2021$new_cases,frequency =7)
+ts_India_2021
+decompose_India_2021 <- decompose(ts_India_2021, "additive")
+plot(decompose_India_2021)
+acf(ts_India_2021)
+pacf(ts_India_2021)
+model_India_2021 <- auto.arima(ts_India_2021, ic="aic", trace =TRUE, approximation = F)
+model_India_2021
+acf(ts(model_India_2021$residuals))
+pacf(ts(model_India_2021$residuals))
+
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
+forecast_India_2021<-forecast(model_India_2021, h=4, level=c(95))
+forecast_India_2021
+plot(forecast_India_2021)
+summary(forecast_India_2021)
+accuracy(forecast_India_2021)
+
+#actual new cases in India on July 1, 2021
+(dataset %>% filter (location =='India', date=='2021-07-01'))[6]
+#46617
+#difference between the actual and predicted
+abs(46617 - 91799.52)
+```
+
+#### 3d-1). Modeling - UK (training set of 2020/03 - 2021/06)
 ```{r}
 #finding the best ARIMA model with respect to AIC value
 model_UK <- auto.arima(ts_UK, ic="aic", trace =TRUE, approximation = F)
@@ -251,7 +344,35 @@ accuracy(forecast_UK)
 abs(28071 - 3944.238)
 ```
 
-#### 3e). Modeling - EU
+#### 3d-2). Modeling - UK (training set of 2021/01 - 2021/06)
+```{r}
+UK_2021 <- UK %>% filter (date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= UK_2021, aes(date,new_cases)) + geom_line()
+
+#checking decomposition and stationary
+ts_UK_2021 <- ts(UK_2021$new_cases,frequency =7)
+ts_UK_2021
+decompose_UK_2021 <- decompose(ts_UK_2021, "additive")
+plot(decompose_UK_2021)
+acf(ts_UK_2021)
+pacf(ts_UK_2021)
+model_UK_2021 <- auto.arima(ts_UK_2021, ic="aic", trace =TRUE, approximation = F)
+model_UK_2021
+acf(ts(model_UK_2021$residuals))
+pacf(ts(model_UK_2021$residuals))
+
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
+forecast_UK_2021<-forecast(model_UK_2021, h=4, level=c(95))
+forecast_UK_2021
+plot(forecast_UK_2021)
+summary(forecast_UK_2021)
+accuracy(forecast_UK_2021)
+
+#actual new cases in UK on July 1, 2021 is 28071
+#difference between the actual and predicted
+abs(28071 - 4175.98)
+```
+#### 3e-1). Modeling - EU (training set of 2020/03 - 2021/06)
 ```{r}
 #finding the best ARIMA model with respect to AIC value
 model_EU <- auto.arima(ts_EU, ic="aic", trace =TRUE, approximation = F)
@@ -274,28 +395,150 @@ accuracy(forecast_EU)
 #difference between the actual and predicted
 abs(2337 - 7650.1)
 ```
-#### 3f). Modeling - US only 2021 data (extra)
-```{r}
-US2 <- US %>% filter (location =='United States', date>= '2021-01-01',date<='2021-06-01')
-ggplot(data= US2, aes(date,new_cases)) + geom_line()
 
-ts_US2 <- ts(US2$new_cases,frequency =7)
-ts_US2
-decompose_US <- decompose(ts_US2, "additive")
-plot(decompose_US)
-acf(ts_US2)
-pacf(ts_US2)
-model_US2 <- auto.arima(ts_US2, ic="aic", trace =TRUE, approximation = F)
-model_US2
-acf(ts(model_US2$residuals))
-pacf(ts(model_US2$residuals))
-forecast_US2<-forecast(model_US2, h=4, level=c(95))
-forecast_US2
-plot(forecast_US2)
-summary(forecast_US2)
-accuracy(forecast_US2)
+#### 3e-2). Modeling - EU (training set of 2021/01 - 2021/06)
+```{r}
+EU_2021 <- EU %>% filter (date>= '2021-01-01',date<='2021-06-01')
+ggplot(data= EU_2021, aes(date,new_cases)) + geom_line()
+
+#checking decomposition and stationary
+ts_EU_2021 <- ts(EU_2021$new_cases,frequency =7)
+ts_EU_2021
+decompose_EU_2021 <- decompose(ts_EU_2021, "additive")
+plot(decompose_EU_2021)
+acf(ts_EU_2021)
+pacf(ts_EU_2021)
+model_EU_2021<- auto.arima(ts_EU_2021, ic="aic", trace =TRUE, approximation = F)
+model_EU_2021
+acf(ts(model_EU_2021$residuals))
+pacf(ts(model_EU_2021$residuals))
+
+#forecasting 1 month ahead (4-weekly forecast) with a 95% interval
+forecast_EU_2021<-forecast(model_EU_2021, h=4, level=c(95))
+forecast_EU_2021
+plot(forecast_EU_2021)
+summary(forecast_EU_2021)
+accuracy(forecast_EU_2021)
+
+#actual new cases in EU on July 1, 2021 is 2337
+(dataset %>% filter (location =='Belgium', date=='2021-07-01'))[6] +(dataset %>% filter (location =='Netherlands', date=='2021-07-01'))[6] +(dataset %>% filter (location =='Germany', date=='2021-07-01'))[6]
 #difference between the actual and predicted
-abs(14463 - 4236.653)
+abs(2337 - 5704.728)
+```
+
+#### 4a). US - Uncertainty Comparison
+```{r}
+#test set is 1 month of values after June 1st, 2021
+US_testset<-dataSubset %>% filter (location =='United States', date>= '2021-06-02',date<='2021-07-01')
+
+ts_US_testset <- ts(US_testset$new_cases, frequency =7)
+ts_US_testset
+
+#picking actual values of four 7-day
+i<-1
+actual_US<-ts_US_testset[1:(i+6)==(i+6)]
+actual_US
+
+accuracy(forecast_US, actual_US)
+#mean absolute percentage error (MAPE) = 42.17
+#root mean squared error (RMSE) = 5263.455
+
+accuracy(forecast_US_2021, actual_US)
+#mean absolute percentage error (MAPE) = 42.90
+#root mean squared error (RMSE) = 5321.225
+```
+
+#### 4b). China - Uncertainty Comparison
+```{r}
+#test set is 1 month of values after June 1st, 2021
+China_testset<-dataSubset %>% filter (location =='China', date>= '2021-06-02',date<='2021-07-01')
+
+ts_China_testset <- ts(China_testset$new_cases, frequency =7)
+ts_China_testset
+
+#picking actual values of four 7-day
+i<-1
+actual_China<-ts_China_testset[1:(i+6)==(i+6)]
+actual_China
+
+accuracy(forecast_China, actual_China)
+#mean absolute percentage error (MAPE) = 75.13
+#root mean squared error (RMSE) = 10.94
+
+accuracy(forecast_China_2021, actual_China)
+#mean absolute percentage error (MAPE) = 69.78
+#root mean squared error (RMSE) = 10.85
+```
+
+#### 4c). India - Uncertainty Comparison
+```{r}
+#test set is 1 month of values after June 1st, 2021
+India_testset<-dataSubset %>% filter (location =='India', date>= '2021-06-02',date<='2021-07-01')
+
+ts_India_testset <- ts(India_testset$new_cases, frequency =7)
+ts_India_testset
+
+#picking actual values of four 7-day
+i<-1
+actual_India<-ts_India_testset[1:(i+6)==(i+6)]
+actual_India
+
+accuracy(forecast_India, actual_India)
+#mean absolute percentage error (MAPE) = 91.39
+#root mean squared error (RMSE) = 52880.40
+
+accuracy(forecast_India_2021, actual_India)
+#mean absolute percentage error (MAPE) = 82.69
+#root mean squared error (RMSE) = 48218.16
+```
+
+#### 4d). UK - Uncertainty Comparison
+```{r}
+#test set is 1 month of values after June 1st, 2021
+UK_testset<-Subset_UK %>% filter ( date>= '2021-06-02',date<='2021-07-01')
+
+ts_UK_testset <- ts(UK_testset$new_cases, frequency =7)
+ts_UK_testset
+
+#picking actual values of four 7-day
+i<-1
+actual_UK<-ts_UK_testset[1:(i+6)==(i+6)]
+actual_UK
+
+accuracy(forecast_UK, actual_UK)
+#mean absolute percentage error (MAPE) = 63.49
+#root mean squared error (RMSE) = 13806.76
+
+accuracy(forecast_UK_2021, actual_UK)
+#mean absolute percentage error (MAPE) = 61.48
+#root mean squared error (RMSE) = 13663.83
+```
+
+#### 4e). EU - Uncertainty Comparison
+```{r}
+#test set is 1 month of values after June 1st, 2021
+#Combine Germany Belgium and Netherlands as EU
+Germany_testset<-dataSubset %>% filter (location =='Germany', date>= '2021-06-02',date<='2021-07-01')
+Belgium_testset<-dataSubset %>% filter (location =='Belgium', date>= '2021-06-02',date<='2021-07-01')
+Netherlands_testset<-dataSubset %>% filter (location =='Netherlands', date>= '2021-06-02',date<='2021-07-01')
+EU_testset <- Germany_testset$new_cases +Belgium_testset$new_cases + Netherlands_testset$new_cases
+EU_testset
+
+ts_EU_testset <- ts(EU_testset, frequency =7)
+ts_EU_testset
+
+#picking actual values of four 7-day
+i<-1
+actual_EU<-ts_EU_testset[1:(i+6)==(i+6)]
+actual_EU
+
+accuracy(forecast_EU, actual_EU)
+#mean absolute percentage error (MAPE) = 293.51
+#root mean squared error (RMSE) = 7342.32
+
+accuracy(forecast_EU_2021, actual_EU)
+#mean absolute percentage error (MAPE) = 254.48
+#root mean squared error (RMSE) = 6719.075
 ```
 
 
