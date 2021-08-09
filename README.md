@@ -9,19 +9,19 @@ The COVID-19 related data is publicly available from Our World in Data. The data
 
 ## Approach
 
-### Pre-process Data in R
+### 1. Pre-process Data in R
 Loading all the COVID-19 daily reports in R would be the first step; the reports are available in a single GitHub folder, written in csv. The rows that are not China, U.S. EU (Germany, Belgium, and Netherlands), India, and U.K., in each dataset, will be removed. Unnecessary columns will be removed and certain period of time will be selected for the study. Then, bind the datasets by country in ascending order. 
 
-### Exploratory Data Analysis
+### 2. Exploratory Data Analysis
 Exploratory Data Analysis (EDA) is needed to gather insights from the dataset. First, we will check if there are gaps or missing values. In R, the str() function shows the total number of observations and its data type, and head() and tail() show the first and last five observations. The summary() function returns various summary statistics; it shows the minimum value, 1st quartile, median, mean, 3rd quartile and maximum value of the data. We can find how strong the correlation between “confirmed” and “deaths” of COVID-19. Patterns in the data must be studied. The decomposition check will allow us to study the trend, seasonality and irregular fluctuations of the dataset.
 
-### Predictive Modeling
+### 3. Predictive Modeling
 In order to use an autoregressive integrated moving average, or ARIMA, model, the data must be stationary, univariate and in time series data format. If the data is not stationary (have a constant mean and variance), we will have to difference the data by subtracting the next value by the current value and make the data follow a stationary pattern. Autocorrelation function (ACF) and Partial autocorrelation function (PACF) will be used to determine the parameters, auto regression, integration and moving average, of an ARIMA model. Then we will use the auto.arima function with the three parameters to return a model and predict the number of new cases and deaths of COVID-19. We will conduct different n-day forecast; we can test our model, by comparing with actual values, using 30-day forecast; we can predict the future, using 90-day forecast.
 
-### Performance Evaluation
+### 4. Performance Evaluation
 After a time series analysis, we can calculate the forecast error as the actual value minus the predicted value for each prediction. We can find the mean squared error (MSE) by taking the average of the squared forecast errors, then find the root mean squared error (RMSE) by square rooting the MSE. RMSE will measure the average magnitude of the error of the time series analysis. Another method to evaluate the performance of time series analysis is the mean absolute error (MAE), which can be calculated as the average of the absolute value of the forecast errors. 
 
-### Conclusion
+### 5. Conclusion
 The ARIMA models display projection graphs forecasting new cases and deaths of COVID-19 for five countries. The main purpose of this project is to find if end of the COVID-19 is coming, with the help of vaccines. We can conclude that the pandemic will end soon if the future COVID-19 trend is downward and approaching towards zero. 
 
 ## Result
